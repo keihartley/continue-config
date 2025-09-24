@@ -47,7 +47,7 @@ jobs:
           echo "🔍 Checking required files..."
 
           # Check required files exist
-          required_files=("config.yaml" "config.ts" "package.json" "tsconfig.json" "README.md")
+          required_files=("config.yaml" "config.ts" "package.json" "tsconfig.json" "docs/README.md")
 
           for file in "${required_files[@]}"; do
             if [[ -f "$file" ]]; then
@@ -150,22 +150,22 @@ jobs:
           echo "🔍 Checking documentation completeness..."
 
           # Check README exists and has content
-          if [[ ! -f "README.md" || ! -s "README.md" ]]; then
-            echo "❌ README.md is missing or empty"
+          if [[ ! -f "docs/README.md" || ! -s "docs/README.md" ]]; then
+            echo "❌ docs/README.md is missing or empty"
             exit 1
           fi
 
           # Check for basic sections in README
-          if ! grep -qi "## " README.md; then
-            echo "❌ README.md should have proper sections"
+          if ! grep -qi "## " docs/README.md; then
+            echo "❌ docs/README.md should have proper sections"
             exit 1
           fi
 
           # Check if SETUP.md exists
-          if [[ -f "SETUP.md" ]]; then
-            echo "✅ SETUP.md found"
+          if [[ -f "docs/SETUP.md" ]]; then
+            echo "✅ docs/SETUP.md found"
           else
-            echo "⚠️ Consider adding a SETUP.md file"
+            echo "⚠️ Consider adding a docs/SETUP.md file"
           fi
 
           echo "✅ Documentation check completed"
