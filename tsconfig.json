@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "lib": ["ES2020"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "esModuleInterop": false,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "module": "System",
+    "moduleResolution": "Node",
+    "noEmit": false,
+    "noEmitOnError": false,
+    "outFile": "./out/config.js",
+    "typeRoots": ["./node_modules/@types", "./types"],
+    "declaration": false,
+    "sourceMap": false
+  },
+  "include": ["./config.ts"],
+  "exclude": ["node_modules", "out", "index", "sessions", "dev_data"]
+}

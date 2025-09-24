@@ -1,0 +1,174 @@
+name: Cliff's Continue Configuration
+version: 1.0.0
+schema: v1
+
+# Language Models - Define your AI models here
+models:
+  # Primary chat model - Qwen2.5-Coder 32B for main agent tasks
+  - name: Qwen2.5-Coder 32B Main Agent
+    provider: ollama
+    model: qwen2.5-coder:32b-instruct
+    roles:
+      - chat
+      - edit
+      - apply
+      - summarize
+    defaultCompletionOptions:
+      temperature: 0.7
+      maxTokens: 8192
+      contextLength: 32768
+    chatOptions:
+      baseSystemMessage: "You are an expert software engineer assistant specializing in code analysis, debugging, and development. Provide clear, accurate, and helpful responses."
+    capabilities:
+      - tool_use
+
+  # Autocomplete model - Qwen2.5-Coder 14B for fast completions
+  - name: Qwen2.5-Coder 14B Autocomplete
+    provider: ollama
+    model: qwen2.5-coder:14b-instruct
+    roles:
+      - autocomplete
+    autocompleteOptions:
+      debounceDelay: 200
+      maxPromptTokens: 2048
+      onlyMyCode: true
+      useCache: true
+      useRecentlyEdited: true
+      useRecentlyOpened: true
+      useImports: true
+      modelTimeout: 3000
+      maxSuffixPercentage: 0.25
+      prefixPercentage: 0.85
+    defaultCompletionOptions:
+      temperature: 0.2
+      contextLength: 32768
+      maxTokens: 256
+      stop:
+        - "\n\n"
+        - "```"
+        - "def "
+        - "class "
+        - "function "
+
+  # Backup OpenAI model (commented out - uncomment if you have API key)
+  # - name: GPT-4o Backup
+  #   provider: openai
+  #   model: gpt-4o
+  #   roles:
+  #     - chat
+  #     - edit
+  #     - apply
+  #   defaultCompletionOptions:
+  #     temperature: 0.7
+  #     maxTokens: 4000
+  #   apiKey: ${{ secrets.OPENAI_API_KEY }}
+
+  # Alternative Anthropic model (commented out)
+  # - uses: anthropic/claude-3.5-sonnet
+  #   with:
+  #     ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+  #   override:
+  #     defaultCompletionOptions:
+  #       temperature: 0.8
+
+# Context Providers - Sources of information for the AI
+context:
+  - provider: file # Current file context
+  - provider: code # Code symbol definitions and references
+  - provider: diff # Git diff context
+  - provider: terminal # Terminal history
+  - provider: problems # IDE error/warning messages
+  - provider: folder # Directory structure
+  - provider: codebase # Full codebase search
+
+# Rules - Guidelines for the AI to follow
+rules:
+  - Always write clean, readable, and well-documented code
+  - Use TypeScript interfaces and types appropriately
+  - Follow established code patterns and conventions in the project
+  - Include error handling in production code
+  - Write descriptive commit messages and comments
+  - name: TypeScript Standards
+    rule: |
+      For TypeScript projects:
+      - Use strict type checking
+      - Prefer interfaces over type aliases for object shapes
+      - Use proper return type annotations for functions
+      - Avoid 'any' types unless absolutely necessary
+    globs: "**/*.{ts,tsx}"
+  - name: Testing Guidelines
+    rule: |
+      When writing tests:
+      - Use descriptive test names that explain the behavior
+      - Follow AAA pattern: Arrange, Act, Assert
+      - Mock external dependencies properly
+      - Test both happy path and error cases
+    globs: "**/*.{test,spec}.{ts,js,tsx,jsx}"
+
+# Custom Prompts - Reusable prompt templates
+prompts:
+  - name: code-review
+    description: Perform a thorough code review
+    prompt: |
+      Please review the highlighted code for:
+      - Code quality and best practices
+      - Potential bugs or security issues
+      - Performance optimizations
+      - Maintainability and readability
+      - Test coverage suggestions
+
+      Provide specific, actionable feedback.
+
+  - name: explain
+    description: Explain complex code in simple terms
+    prompt: |
+      Please explain this code in clear, simple terms:
+      - What does it do?
+      - How does it work?
+      - Why might it be structured this way?
+      - Are there any gotchas or important details?
+
+  - name: optimize
+    description: Suggest performance optimizations
+    prompt: |
+      Analyze this code for performance optimization opportunities:
+      - Identify bottlenecks
+      - Suggest algorithmic improvements
+      - Recommend better data structures if applicable
+      - Consider memory usage and efficiency
+
+  - name: test-gen
+    description: Generate comprehensive unit tests
+    prompt: |
+      Generate comprehensive unit tests for this code:
+      - Cover all public methods/functions
+      - Test edge cases and error conditions
+      - Use appropriate mocking for dependencies
+      - Follow testing best practices for the language/framework
+      - Include descriptive test names and comments
+
+# Documentation Sources - External docs to reference
+docs:
+  - name: TypeScript Handbook
+    startUrl: https://www.typescriptlang.org/docs/
+  - name: Node.js Documentation
+    startUrl: https://nodejs.org/en/docs/
+  - name: Continue.dev Docs
+    startUrl: https://docs.continue.dev/intro
+# MCP Servers - Model Context Protocol integrations (optional)
+# mcpServers:
+#   - name: File System Server
+#     command: npx
+#     args:
+#       - "@modelcontextprotocol/server-filesystem"
+#       - "/path/to/allowed/files"
+
+# Development Data Collection (optional - for analytics)
+# data:
+#   - name: Local Development Analytics
+#     destination: file:///Users/Cliff/.continue/dev_data
+#     schema: 0.2.0
+#     level: noCode  # Excludes sensitive code content
+#     events:
+#       - chatInteraction
+#       - autocomplete

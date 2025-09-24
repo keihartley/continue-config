@@ -1,0 +1,17 @@
+# Ensure consistent line endings across platforms
+* text=auto eol=lf
+
+# Explicitly define line endings for specific file types
+*.js text eol=lf
+*.ts text eol=lf
+*.json text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.md text eol=lf
+*.sh text eol=lf
+*.cjs text eol=lf
+
+# Binary files
+*.sqlite binary
+*.lance binary
+*.db binary

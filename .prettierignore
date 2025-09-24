@@ -1,0 +1,20 @@
+# Ignore artifacts:
+build/
+coverage/
+out/
+dist/
+
+# Generated files
+*.js
+*.js.map
+
+# Runtime data
+index/
+sessions/
+dev_data/
+
+# Dependencies
+node_modules/
+
+# External type definitions
+types/core/index.d.ts
