@@ -42,44 +42,41 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: 🔍 Validate Tag Format
+      - name: 🏷️ Normalize Tag Name
+        id: normalize_tag
         run: |
           TAG="${{ github.event.inputs.tag_name }}"
+          # Ensure tag starts with 'v'
+          if [[ ! "$TAG" =~ ^v ]]; then
+            TAG="v$TAG"
+          fi
+          echo "NORMALIZED_TAG=$TAG" >> $GITHUB_ENV
+          echo "✅ Tag normalized: $TAG"
 
+      - name: 🔍 Validate Tag Format
+        run: |
           # Check if tag follows semantic versioning
-          if [[ ! "$TAG" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+(-.*)?$ ]]; then
+          if [[ ! "$NORMALIZED_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-.*)?$ ]]; then
             echo "❌ Tag format invalid. Expected format: v1.2.3 or 1.2.3"
             echo "Examples: v1.0.0, v1.2.3-beta.1, 2.1.0"
             exit 1
           fi
-
-          # Ensure tag starts with 'v'
-          if [[ ! "$TAG" =~ ^v ]]; then
-            TAG="v$TAG"
-          fi
-
-          echo "✅ Tag format valid: $TAG"
+          echo "✅ Tag format valid: $NORMALIZED_TAG"
 
       - name: 🔍 Check Tag Existence
         run: |
-          TAG="${{ github.event.inputs.tag_name }}"
-          # Ensure tag starts with 'v'
-          if [[ ! "$TAG" =~ ^v ]]; then
-            TAG="v$TAG"
-          fi
-
-          if git tag -l | grep -q "^$TAG$"; then
+          if git tag -l | grep -q "^$NORMALIZED_TAG$"; then
             if [ "${{ github.event.inputs.force }}" = "true" ]; then
-              echo "⚠️ Tag $TAG exists but force=true, will overwrite"
-              git tag -d "$TAG" || true
-              git push origin ":refs/tags/$TAG" || true
+              echo "⚠️ Tag $NORMALIZED_TAG exists but force=true, will overwrite"
+              git tag -d "$NORMALIZED_TAG" || true
+              git push origin ":refs/tags/$NORMALIZED_TAG" || true
             else
-              echo "❌ Tag $TAG already exists. Use force=true to overwrite."
+              echo "❌ Tag $NORMALIZED_TAG already exists. Use force=true to overwrite."
               exit 1
             fi
           fi
 
-          echo "✅ Tag $TAG is available"
+          echo "✅ Tag $NORMALIZED_TAG is available"
 
       - name: 🔧 Configure Git
         run: |
@@ -88,49 +85,34 @@ jobs:
 
       - name: 🏷️ Create Tag
         run: |
-          TAG="${{ github.event.inputs.tag_name }}"
-          # Ensure tag starts with 'v'
-          if [[ ! "$TAG" =~ ^v ]]; then
-            TAG="v$TAG"
-          fi
           MESSAGE="${{ github.event.inputs.tag_message }}"
 
           if [ -n "$MESSAGE" ]; then
-            git tag -a "$TAG" -m "$MESSAGE"
-            echo "✅ Annotated tag $TAG created with message: $MESSAGE"
+            git tag -a "$NORMALIZED_TAG" -m "$MESSAGE"
+            echo "✅ Annotated tag $NORMALIZED_TAG created with message: $MESSAGE"
           else
-            git tag -a "$TAG" -m "Tag $TAG"
-            echo "✅ Annotated tag $TAG created"
+            git tag -a "$NORMALIZED_TAG" -m "Tag $NORMALIZED_TAG"
+            echo "✅ Annotated tag $NORMALIZED_TAG created"
           fi
 
       - name: 📤 Push Tag
         run: |
-          TAG="${{ github.event.inputs.tag_name }}"
-          # Ensure tag starts with 'v'
-          if [[ ! "$TAG" =~ ^v ]]; then
-            TAG="v$TAG"
-          fi
-          git push origin "$TAG"
-          echo "✅ Tag $TAG pushed to origin"
+          git push origin "$NORMALIZED_TAG"
+          echo "✅ Tag $NORMALIZED_TAG pushed to origin"
 
       - name: 📋 Tag Summary
         run: |
-          TAG="${{ github.event.inputs.tag_name }}"
-          # Ensure tag starts with 'v'
-          if [[ ! "$TAG" =~ ^v ]]; then
-            TAG="v$TAG"
-          fi
           echo "## 🏷️ Tag Created Successfully!" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📋 Tag Details" >> $GITHUB_STEP_SUMMARY
-          echo "- **Tag Name**: $TAG" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tag Name**: $NORMALIZED_TAG" >> $GITHUB_STEP_SUMMARY
           echo "- **Message**: ${{ github.event.inputs.tag_message || 'Default tag message' }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Commit**: $(git rev-parse HEAD)" >> $GITHUB_STEP_SUMMARY
           echo "- **Created**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 🔗 Links" >> $GITHUB_STEP_SUMMARY
-          echo "- [View Tag](https://github.com/${{ github.repository }}/releases/tag/$TAG)" >> $GITHUB_STEP_SUMMARY
-          echo "- [Create Release](https://github.com/${{ github.repository }}/releases/new?tag=$TAG)" >> $GITHUB_STEP_SUMMARY
+          echo "- [View Tag](https://github.com/${{ github.repository }}/releases/tag/$NORMALIZED_TAG)" >> $GITHUB_STEP_SUMMARY
+          echo "- [Create Release](https://github.com/${{ github.repository }}/releases/new?tag=$NORMALIZED_TAG)" >> $GITHUB_STEP_SUMMARY
 
   tag-delete:
     name: 🗑️ Delete Tag

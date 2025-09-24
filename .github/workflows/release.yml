@@ -22,6 +22,11 @@ on:
         required: false
         type: string
 
+permissions:
+  contents: write # Required for creating releases and pushing commits
+  packages: write # Required for publishing packages
+  pull-requests: write # Required for PR operations (if any)
+
 env:
   NODE_VERSION: "20"
 
@@ -174,29 +179,27 @@ jobs:
           fi
 
           # Create release notes with proper escaping
-          cat << 'EOF' >> $GITHUB_OUTPUT
-          release_notes<<RELEASE_NOTES_EOF
-          ## 🚀 Release ${{ needs.build.outputs.tag }}
-
-          ### 📋 Changes
-          EOF
-          echo "$COMMITS" >> $GITHUB_OUTPUT
-          cat << 'EOF' >> $GITHUB_OUTPUT
-
-          ### 🔧 Release Information
-          - **Release Type**: ${{ github.event.inputs.release_type }} 
-          - **Version**: ${{ needs.build.outputs.version }}
-          - **Pre-release**: ${{ github.event.inputs.pre_release }}
-
-          ### 📦 Artifacts
-          This release includes:
-          - ✅ Validated Continue.dev configuration
-          - ✅ Compiled TypeScript output
-          - ✅ All quality checks passed
-
-          ${{ github.event.inputs.release_notes }}
-          RELEASE_NOTES_EOF
-          EOF
+          {
+            echo "release_notes<<RELEASE_NOTES_END"
+            echo "## 🚀 Release ${{ needs.build.outputs.tag }}"
+            echo ""
+            echo "### 📋 Changes"
+            echo "$COMMITS"
+            echo ""
+            echo "### 🔧 Release Information"
+            echo "- **Release Type**: ${{ github.event.inputs.release_type }}"
+            echo "- **Version**: ${{ needs.build.outputs.version }}"
+            echo "- **Pre-release**: ${{ github.event.inputs.pre_release }}"
+            echo ""
+            echo "### 📦 Artifacts"
+            echo "This release includes:"
+            echo "- ✅ Validated Continue.dev configuration"
+            echo "- ✅ Compiled TypeScript output"
+            echo "- ✅ All quality checks passed"
+            echo ""
+            echo "${{ github.event.inputs.release_notes }}"
+            echo "RELEASE_NOTES_END"
+          } >> $GITHUB_OUTPUT
 
       - name: 🎉 Create GitHub Release
         uses: actions/create-release@v1
