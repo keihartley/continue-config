@@ -1,6 +1,6 @@
 {
   "name": "continue-config",
-  "version": "0.9.9",
+  "version": "0.0.9",
   "description": "Custom Continue.dev Configuration",
   "type": "module",
   "scripts": {
