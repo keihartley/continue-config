@@ -1,0 +1,92 @@
+name: 🏗️ Build
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master, develop]
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: "20"
+
+jobs:
+  build:
+    name: 🏗️ Build & Package
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: 🔧 Install Dependencies
+        run: npm ci
+
+      - name: 🎨 Check Code Formatting
+        run: npm run format:check
+
+      - name: 🔍 Run ESLint
+        run: npm run lint:check
+
+      - name: 🧪 Validate Configuration
+        run: npm run validate:config
+
+      - name: 🏗️ Build TypeScript
+        run: npm run build
+
+      - name: 📋 Verify Build Output
+        run: |
+          echo "🔍 Checking build output..."
+          ls -la out/
+          if [ ! -f "out/config.js" ]; then
+            echo "❌ Build output missing!"
+            exit 1
+          fi
+          echo "✅ Build output verified"
+
+      - name: 📦 Create Package Archive
+        run: |
+          echo "📦 Creating distribution package..."
+          mkdir -p dist
+
+          # Copy essential files
+          cp config.yaml dist/
+          cp config.ts dist/
+          cp package.json dist/
+          cp -r out/ dist/
+
+          # Create archive
+          tar -czf continue-config-build.tar.gz -C dist .
+
+          echo "✅ Package created: continue-config-build.tar.gz"
+
+      - name: 📤 Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: continue-config-build-${{ github.sha }}
+          path: |
+            continue-config-build.tar.gz
+            out/
+            config.yaml
+            config.ts
+          retention-days: 30
+
+      - name: 📊 Build Summary
+        run: |
+          echo "## 🏗️ Build Completed Successfully!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📋 Build Details" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit**: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch**: \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Node Version**: ${{ env.NODE_VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "- Build archive: \`continue-config-build.tar.gz\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Compiled output: \`out/config.js\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Configuration files included" >> $GITHUB_STEP_SUMMARY

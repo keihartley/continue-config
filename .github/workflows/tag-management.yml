@@ -1,0 +1,248 @@
+name: 🏷️ Tag Management
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: "Tag name (e.g., v1.2.3)"
+        required: true
+        type: string
+      tag_message:
+        description: "Tag message (optional)"
+        required: false
+        type: string
+      action:
+        description: "Tag Action"
+        required: true
+        default: "create"
+        type: choice
+        options:
+          - create
+          - delete
+          - list
+      force:
+        description: "Force operation (for delete/overwrite)"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  tag-create:
+    name: 🏷️ Create Tag
+    runs-on: ubuntu-latest
+    if: github.event.inputs.action == 'create'
+
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🔍 Validate Tag Format
+        run: |
+          TAG="${{ github.event.inputs.tag_name }}"
+
+          # Check if tag follows semantic versioning
+          if [[ ! "$TAG" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+(-.*)?$ ]]; then
+            echo "❌ Tag format invalid. Expected format: v1.2.3 or 1.2.3"
+            echo "Examples: v1.0.0, v1.2.3-beta.1, 2.1.0"
+            exit 1
+          fi
+
+          # Ensure tag starts with 'v'
+          if [[ ! "$TAG" =~ ^v ]]; then
+            TAG="v$TAG"
+          fi
+
+          echo "✅ Tag format valid: $TAG"
+
+      - name: 🔍 Check Tag Existence
+        run: |
+          TAG="${{ github.event.inputs.tag_name }}"
+          # Ensure tag starts with 'v'
+          if [[ ! "$TAG" =~ ^v ]]; then
+            TAG="v$TAG"
+          fi
+
+          if git tag -l | grep -q "^$TAG$"; then
+            if [ "${{ github.event.inputs.force }}" = "true" ]; then
+              echo "⚠️ Tag $TAG exists but force=true, will overwrite"
+              git tag -d "$TAG" || true
+              git push origin ":refs/tags/$TAG" || true
+            else
+              echo "❌ Tag $TAG already exists. Use force=true to overwrite."
+              exit 1
+            fi
+          fi
+
+          echo "✅ Tag $TAG is available"
+
+      - name: 🔧 Configure Git
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+      - name: 🏷️ Create Tag
+        run: |
+          TAG="${{ github.event.inputs.tag_name }}"
+          # Ensure tag starts with 'v'
+          if [[ ! "$TAG" =~ ^v ]]; then
+            TAG="v$TAG"
+          fi
+          MESSAGE="${{ github.event.inputs.tag_message }}"
+
+          if [ -n "$MESSAGE" ]; then
+            git tag -a "$TAG" -m "$MESSAGE"
+            echo "✅ Annotated tag $TAG created with message: $MESSAGE"
+          else
+            git tag -a "$TAG" -m "Tag $TAG"
+            echo "✅ Annotated tag $TAG created"
+          fi
+
+      - name: 📤 Push Tag
+        run: |
+          TAG="${{ github.event.inputs.tag_name }}"
+          # Ensure tag starts with 'v'
+          if [[ ! "$TAG" =~ ^v ]]; then
+            TAG="v$TAG"
+          fi
+          git push origin "$TAG"
+          echo "✅ Tag $TAG pushed to origin"
+
+      - name: 📋 Tag Summary
+        run: |
+          TAG="${{ github.event.inputs.tag_name }}"
+          # Ensure tag starts with 'v'
+          if [[ ! "$TAG" =~ ^v ]]; then
+            TAG="v$TAG"
+          fi
+          echo "## 🏷️ Tag Created Successfully!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📋 Tag Details" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tag Name**: $TAG" >> $GITHUB_STEP_SUMMARY
+          echo "- **Message**: ${{ github.event.inputs.tag_message || 'Default tag message' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit**: $(git rev-parse HEAD)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Created**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔗 Links" >> $GITHUB_STEP_SUMMARY
+          echo "- [View Tag](https://github.com/${{ github.repository }}/releases/tag/$TAG)" >> $GITHUB_STEP_SUMMARY
+          echo "- [Create Release](https://github.com/${{ github.repository }}/releases/new?tag=$TAG)" >> $GITHUB_STEP_SUMMARY
+
+  tag-delete:
+    name: 🗑️ Delete Tag
+    runs-on: ubuntu-latest
+    if: github.event.inputs.action == 'delete'
+
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: ⚠️ Confirm Deletion
+        run: |
+          if [ "${{ github.event.inputs.force }}" != "true" ]; then
+            echo "❌ Tag deletion requires force=true for safety"
+            echo "This will permanently delete tag: ${{ github.event.inputs.tag_name }}"
+            exit 1
+          fi
+          echo "✅ Force deletion confirmed"
+
+      - name: 🔍 Verify Tag Exists
+        run: |
+          TAG="${{ github.event.inputs.tag_name }}"
+
+          if ! git tag -l | grep -q "^$TAG$"; then
+            echo "❌ Tag $TAG does not exist"
+            git tag -l | head -10
+            exit 1
+          fi
+
+          echo "✅ Tag $TAG found"
+
+      - name: 🔧 Configure Git
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+      - name: 🗑️ Delete Tag
+        run: |
+          TAG="${{ github.event.inputs.tag_name }}"
+
+          # Delete local tag
+          git tag -d "$TAG"
+          echo "✅ Local tag $TAG deleted"
+
+          # Delete remote tag
+          git push origin ":refs/tags/$TAG"
+          echo "✅ Remote tag $TAG deleted"
+
+      - name: 📋 Deletion Summary
+        run: |
+          TAG="${{ github.event.inputs.tag_name }}"
+          echo "## 🗑️ Tag Deleted Successfully!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📋 Deletion Details" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tag Name**: $TAG" >> $GITHUB_STEP_SUMMARY
+          echo "- **Deleted**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
+          echo "- **Action**: Forced deletion" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "⚠️ **Warning**: This action cannot be undone"
+
+  tag-list:
+    name: 📋 List Tags
+    runs-on: ubuntu-latest
+    if: github.event.inputs.action == 'list'
+
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 📋 List All Tags
+        run: |
+          echo "🏷️ All repository tags:"
+          echo ""
+
+          if git tag -l | head -1 > /dev/null; then
+            echo "Recent tags (sorted by version):"
+            git tag -l --sort=-version:refname | head -20
+            echo ""
+            echo "Total tags: $(git tag -l | wc -l)"
+          else
+            echo "No tags found in repository"
+          fi
+
+      - name: 📊 Tag Analysis
+        run: |
+          echo "## 🏷️ Repository Tags" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if git tag -l | head -1 > /dev/null; then
+            echo "### 📋 Recent Tags" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            git tag -l --sort=-version:refname | head -10 >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### 📊 Statistics" >> $GITHUB_STEP_SUMMARY
+            echo "- **Total Tags**: $(git tag -l | wc -l)" >> $GITHUB_STEP_SUMMARY
+            echo "- **Latest Tag**: $(git tag -l --sort=-version:refname | head -1)" >> $GITHUB_STEP_SUMMARY
+            
+            # Check for semantic versioning compliance
+            SEMVER_COUNT=$(git tag -l | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+' | wc -l)
+            TOTAL_COUNT=$(git tag -l | wc -l)
+            echo "- **SemVer Compliant**: $SEMVER_COUNT / $TOTAL_COUNT" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### 📋 No Tags Found" >> $GITHUB_STEP_SUMMARY
+            echo "This repository has no tags yet." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### 🚀 Getting Started" >> $GITHUB_STEP_SUMMARY
+            echo "1. Use this workflow to create your first tag" >> $GITHUB_STEP_SUMMARY
+            echo "2. Or use the Release workflow for full releases" >> $GITHUB_STEP_SUMMARY
+          fi
