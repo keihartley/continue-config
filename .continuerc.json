@@ -1,3 +1,20 @@
 {
-  "disableIndexing": true
+  "disableIndexing": true,
+  "mergeBehavior": "merge",
+  "experimental": {
+    "autoApplyFileEdits": true,
+    "useAbsoluteFilePaths": true,
+    "enableStreamingDiffs": true,
+    "allowCommandExecution": true,
+    "modelRoles": {
+      "inlineEdit": "Qwen2.5-Coder 1.5B Main Agent",
+      "applyCodeBlock": "Qwen2.5-Coder 1.5B Main Agent",
+      "repoMapFileSelection": "Qwen2.5-Coder 1.5B Main Agent"
+    }
+  },
+  "ui": {
+    "codeBlockToolbarPosition": "top",
+    "displayRawMarkdown": false,
+    "showChatScrollbar": true
+  }
 }
